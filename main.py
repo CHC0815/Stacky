@@ -3,15 +3,8 @@ from typing import List
 import sys
 import subprocess
 
+from error import Error, NotEnoughOperantsError
 from lexer import TokenType, Token, Lexer, Program
-
-counter = 0
-
-
-def id():
-    global counter
-    counter += 1
-    return counter
 
 
 def simulate_program(prog: Program):
@@ -21,49 +14,59 @@ def simulate_program(prog: Program):
         if el.tokenType == TokenType.OP_NUMBER:
             stack.append(el.value)
         elif el.tokenType == TokenType.OP_ADD:
-            assert len(stack) >= 2, "Not enough operants on the stack. (Required 2)"
+            if len(stack) < 2:
+                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 2)
             a = stack.pop()
             b = stack.pop()
             stack.append(a + b)
         elif el.tokenType == TokenType.OP_SUB:
-            assert len(stack) >= 2, "Not enough operants on the stack. (Required 2)"
+            if len(stack) < 2:
+                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 2)
             a = stack.pop()
             b = stack.pop()
             stack.append(b - a)
         elif el.tokenType == TokenType.OP_PRINT:
-            assert len(stack) >= 1, "Not enough operants on the stack. (Required 1)"
+            if len(stack) < 1:
+                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 1)
             a = stack.pop()
             print(a)
         elif el.tokenType == TokenType.OP_MUL:
-            assert len(stack) >= 2, "Not enough operants on the stack. (Required 2)"
+            if len(stack) < 2:
+                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 2)
             a = stack.pop()
             b = stack.pop()
             stack.append(a * b)
         elif el.tokenType == TokenType.OP_DIV:
-            assert len(stack) >= 2, "Not enough operants on the stack. (Required 2)"
+            if len(stack) < 2:
+                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 2)
             a = stack.pop()
             b = stack.pop()
             stack.append(b / a)
         elif el.tokenType == TokenType.OP_DUP:
-            assert len(stack) >= 1, "Not enough operants on the stack. (Required 1)"
+            if len(stack) < 1:
+                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 1)
             a = stack.pop()
             stack.append(a)
             stack.append(a)
         elif el.tokenType == TokenType.OP_SWAP:
-            assert len(stack) >= 2, "Not enough operants on the stack. (Required 2)"
+            if len(stack) < 2:
+                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 2)
             a = stack.pop()
             b = stack.pop()
             stack.append(a)
             stack.append(b)
         elif el.tokenType == TokenType.OP_DROP:
-            assert len(stack) >= 1, "Not enough operants on the stack. (Required 1)"
+            if len(stack) < 1:
+                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 1)
             stack.pop()
         elif el.tokenType == TokenType.OP_EMIT:
-            assert len(stack) >= 1, "Not enough operants on the stack. (Required 1)"
+            if len(stack) < 1:
+                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 1)
             a = stack.pop()
             print(chr(int(a)))
         elif el.tokenType == TokenType.OP_EQ:
-            assert len(stack) >= 2, "Not enough operants on the stack. (Required 2)"
+            if len(stack) < 2:
+                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 2)
             a = stack.pop()
             b = stack.pop()
             stack.append(a == b)
@@ -72,7 +75,7 @@ def simulate_program(prog: Program):
         elif el.tokenType == TokenType.DEBUG_DICT:
             print(prog.dict)
         else:
-            assert False, "Something went wrong"
+            raise Error(sys.argv[2], el.line_number)
 
 
 def compile_program(prog: Program):
@@ -180,7 +183,7 @@ def compile_program(prog: Program):
             elif el.tokenType == TokenType.DEBUG_DICT:
                 assert False, "Will not be implemented!"
             else:
-                assert False, "Something went wrong"
+                assert False, f'Something went wrong filename: {sys.argv[2]}/{el.line_number}'
 
         f.write(f'; --- exit ---\n')
         f.write(f'    mov rax, 60\n')
@@ -217,10 +220,10 @@ if __name__ == "__main__":
             print("com : compiles the input file to x86 64 assembly and linkes it.")
             quit()
     elif len(sys.argv) < 3:
-        print("Not enough paramerts. Try --help")
+        print("Not enough parameters. Try --help")
         quit()
 
     if(sys.argv[1] != "sim" and sys.argv[1] != "com"):
-        print("First argument must be sim or com. Check f python3 main.py --help")
+        print("First argument must be sim or com. Check python3 main.py --help")
         quit()
     main()

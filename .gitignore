@@ -1,3 +1,4 @@
 *.o
 test
 test.*
+__pycache__
