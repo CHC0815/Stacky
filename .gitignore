@@ -2,3 +2,4 @@
 test
 test.*
 __pycache__
+debug/

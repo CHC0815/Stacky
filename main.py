@@ -1,84 +1,24 @@
+from src.nodes import *
 from enum import Enum
+import parser
 from typing import List
 import sys
 import subprocess
 
-from error import Error, NotEnoughOperantsError
-from lexer import TokenType, Token, Lexer, Program
+from src.error import Error, NotEnoughOperantsError
+from src.lexer import TokenType, Token, Lexer
+from src.stack import Stack
+from src.parser import Program, Parser
 
 
 def simulate_program(prog: Program):
-    program = prog.program
-    stack = []
-    for el in program:
-        if el.tokenType == TokenType.OP_NUMBER:
-            stack.append(el.value)
-        elif el.tokenType == TokenType.OP_ADD:
-            if len(stack) < 2:
-                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 2)
-            a = stack.pop()
-            b = stack.pop()
-            stack.append(a + b)
-        elif el.tokenType == TokenType.OP_SUB:
-            if len(stack) < 2:
-                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 2)
-            a = stack.pop()
-            b = stack.pop()
-            stack.append(b - a)
-        elif el.tokenType == TokenType.OP_PRINT:
-            if len(stack) < 1:
-                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 1)
-            a = stack.pop()
-            print(a)
-        elif el.tokenType == TokenType.OP_MUL:
-            if len(stack) < 2:
-                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 2)
-            a = stack.pop()
-            b = stack.pop()
-            stack.append(a * b)
-        elif el.tokenType == TokenType.OP_DIV:
-            if len(stack) < 2:
-                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 2)
-            a = stack.pop()
-            b = stack.pop()
-            stack.append(b / a)
-        elif el.tokenType == TokenType.OP_DUP:
-            if len(stack) < 1:
-                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 1)
-            a = stack.pop()
-            stack.append(a)
-            stack.append(a)
-        elif el.tokenType == TokenType.OP_SWAP:
-            if len(stack) < 2:
-                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 2)
-            a = stack.pop()
-            b = stack.pop()
-            stack.append(a)
-            stack.append(b)
-        elif el.tokenType == TokenType.OP_DROP:
-            if len(stack) < 1:
-                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 1)
-            stack.pop()
-        elif el.tokenType == TokenType.OP_EMIT:
-            if len(stack) < 1:
-                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 1)
-            a = stack.pop()
-            print(chr(int(a)))
-        elif el.tokenType == TokenType.OP_EQ:
-            if len(stack) < 2:
-                raise NotEnoughOperantsError(sys.argv[2], el.line_number, 2)
-            a = stack.pop()
-            b = stack.pop()
-            stack.append(a == b)
-        elif el.tokenType == TokenType.DEBUG_STACK:
-            print(stack)
-        elif el.tokenType == TokenType.DEBUG_DICT:
-            print(prog.dict)
-        else:
-            raise Error(sys.argv[2], el.line_number)
+    stack = Stack()
+    for node in prog.nodes:
+        node.simulate(stack)
+    print("Simulated")
 
 
-def compile_program(prog: Program):
+def compile_program(prog):
     program = prog.program
     filename = sys.argv[2].split('.')[0] + ".asm"
     with open(filename, 'w') as f:
@@ -205,11 +145,19 @@ def link(filename: str):
 
 def main():
     lexer = Lexer(sys.argv[2])
-    prog = lexer.get_program()
+    tokens = lexer.get_program()
+    with open('./debug/lexer', 'w') as f:
+        for tok in tokens:
+            f.write(f'{tok}\n')
+    parser = Parser(tokens)
+    program = parser.parse()
+    with open('./debug/parser', 'w') as f:
+        for node in program.nodes:
+            f.write(f'{node}\n')
     if sys.argv[1] == "sim":
-        simulate_program(prog)
+        simulate_program(program)
     elif sys.argv[1] == "com":
-        compile_program(prog)
+        compile_program(program)
 
 
 if __name__ == "__main__":
@@ -218,6 +166,8 @@ if __name__ == "__main__":
             print("usage: python3 main.py [sim/com] file")
             print("sim : simulates the input file")
             print("com : compiles the input file to x86 64 assembly and linkes it.")
+            print("")
+            print("In simulation mode you will get error handling.")
             quit()
     elif len(sys.argv) < 3:
         print("Not enough parameters. Try --help")
