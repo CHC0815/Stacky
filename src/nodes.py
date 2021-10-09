@@ -2,7 +2,7 @@ from typing import List
 from src.lexer import Token
 from src.stack import Stack
 from src.error import Error, NotEnoughOperantsError
-from src.program import Program
+from src.prog import Program
 
 
 class Node():
@@ -18,7 +18,7 @@ class Node():
     def simulate(self, prog: Program):
         raise NotImplementedError()
 
-    def compile(self) -> str:
+    def compile(self, prog: Program) -> str:
         '''returns the x86 64 assembly for the current node'''
         raise NotImplementedError()
         return f';not implemenmted!!'
@@ -31,7 +31,7 @@ class NodeNumber(Node):
     def simulate(self, prog: Program):
         prog.stack.push(int(self.token.value))
 
-    def compile(self) -> str:
+    def compile(self, prog: Program) -> str:
         comp = f';--- push {self.token.value} to stack ---\n'
         comp += f'    mov rax, {self.token.value}\n'
         comp += f'    push rax\n'
@@ -55,7 +55,7 @@ class NodeAdd(Node):
         b = prog.stack.pop()
         prog.stack.push(a + b)
 
-    def compile(self) -> str:
+    def compile(self, prog: Program) -> str:
         comp = f';--- add two numbers ---\n'
         comp += f'    pop rax\n'
         comp += f'    pop rbx\n'
@@ -81,7 +81,7 @@ class NodeSubtract(Node):
         b = prog.stack.pop()
         prog.stack.push(b - a)
 
-    def compile(self) -> str:
+    def compile(self, prog: Program) -> str:
         comp = f';--- subtract two numbers ---\n'
         comp += f'    pop rax\n'
         comp += f'    pop rbx\n'
@@ -106,7 +106,7 @@ class NodePrint(Node):
         a = prog.stack.pop()
         print(a)
 
-    def compile(self) -> str:
+    def compile(self, prog: Program) -> str:
         comp = f';--- print number ---\n'
         comp += f'    pop rdi\n'
         comp += f'    call print\n'
@@ -130,7 +130,7 @@ class NodeMultiply(Node):
         b = prog.stack.pop()
         prog.stack.push(a * b)
 
-    def compile(self) -> str:
+    def compile(self, prog: Program) -> str:
         comp = f';--- multiplies two numbers ---\n'
         comp += f'    pop rax\n'
         comp += f'    pop rbx\n'
@@ -156,7 +156,7 @@ class NodeDivide(Node):
         b = prog.stack.pop()
         prog.stack.push(b / a)
 
-    def compile(self) -> str:
+    def compile(self, prog: Program) -> str:
         comp = f';--- divides two numbers ---\n'
         comp += f'    pop rax\n'
         comp += f'    pop rbx\n'
@@ -182,7 +182,7 @@ class NodeDupilcate(Node):
         prog.stack.push(a)
         prog.stack.push(a)
 
-    def compile(self) -> str:
+    def compile(self, prog: Program) -> str:
         comp = f';--- dupilicates a number ---\n'
         comp += f'    pop rax\n'
         comp += f'    push rax\n'
@@ -208,7 +208,7 @@ class NodeSwap(Node):
         prog.stack.push(a)
         prog.stack.push(b)
 
-    def compile(self) -> str:
+    def compile(self, prog: Program) -> str:
         comp = f';--- swapes two numbers ---\n'
         comp += f'    pop rax\n'
         comp += f'    pop rbx\n'
@@ -232,7 +232,7 @@ class NodeDrop(Node):
             raise NotEnoughOperantsError(self.token.file_name, self.token.line_number, 1)
         a = prog.stack.pop()
 
-    def compile(self) -> str:
+    def compile(self, prog: Program) -> str:
         comp = f';--- drops the first number ---\n'
         comp += f'    pop rax\n'
         return comp
@@ -254,7 +254,7 @@ class NodeEmit(Node):
         a = prog.stack.pop()
         print(chr(int(a)))
 
-    def compile(self) -> str:
+    def compile(self, prog: Program) -> str:
         return super().compile()
 
     def __str__(self) -> str:
@@ -275,7 +275,7 @@ class NodeEquals(Node):
         b = prog.stack.pop()
         prog.stack.push(int(a == b))
 
-    def compile(self) -> str:
+    def compile(self, prog: Program) -> str:
         comp = f';--- checks for equality of two numbers ---\n'
         comp += f'    mov rcx, 0\n'  # false
         comp += f'    mov rdx, 1\n'  # true
@@ -299,7 +299,7 @@ class NodeDebugStack(Node):
     def simulate(self, prog: Program):
         print(prog.stack)
 
-    def compile(self) -> str:
+    def compile(self, prog: Program) -> str:
         return super().compile()
 
     def __str__(self) -> str:
@@ -314,9 +314,10 @@ class NodeDebugDict(Node):
         super().__init__(token)
 
     def simulate(self, prog: Program):
-        raise NotImplementedError()
+        for k, v in prog.dict.items():
+            print(f'{k} -> {v}\n')
 
-    def compile(self) -> str:
+    def compile(self, prog: Program) -> str:
         return super().compile()
 
     def __str__(self) -> str:
@@ -331,10 +332,11 @@ class NodeCall(Node):
         super().__init__(token)
         self.name = token.value
 
-    def simulate(self, prog: Program):  # TODO: implement nodecall
-        raise NotImplementedError()
+    def simulate(self, prog: Program):
+        for i in range(len(prog.dict[self.name])):
+            prog.nodes.insert(prog.index + i + 1, prog.dict[self.name][i])
 
-    def compile(self) -> str:
+    def compile(self, prog: Program) -> str:
         return super().compile()
 
     def __str__(self) -> str:
@@ -353,9 +355,9 @@ class NodeWord(Node):
         self.content = content
 
     def simulate(self, prog: Program):
-        pass
+        prog.dict[self.name] = self.content
 
-    def compile(self) -> str:
+    def compile(self, prog: Program) -> str:
         return super().compile()
 
     def __str__(self) -> str:

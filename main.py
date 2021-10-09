@@ -8,13 +8,14 @@ import subprocess
 from src.error import Error, NotEnoughOperantsError
 from src.lexer import TokenType, Token, Lexer
 from src.stack import Stack
-from src.parser import Program, Parser
+from src.parser import Parser
+from src.prog import Program
 
 
 def simulate_program(prog: Program):
-    stack = Stack()
-    for node in prog.nodes:
-        node.simulate(stack)
+    while prog.index < len(prog.nodes):
+        prog.nodes[prog.index].simulate(prog)
+        prog.index += 1
     print("Simulated")
 
 
@@ -144,7 +145,11 @@ def link(filename: str):
 
 
 def main():
-    lexer = Lexer(sys.argv[2])
+    lines = []
+    path = sys.argv[2]
+    with open(path, 'r') as f:
+        lines = f.readlines()
+    lexer = Lexer(path, lines)
     tokens = lexer.get_program()
     with open('./debug/lexer', 'w') as f:
         for tok in tokens:

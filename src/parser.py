@@ -2,7 +2,7 @@ from typing import Dict, List, Tuple
 from src.error import InvalidSyntaxError
 from src.lexer import Token, TokenType
 from src.nodes import *
-from src.program import Program
+from src.prog import Program
 
 
 class Parser():
@@ -33,7 +33,6 @@ class Parser():
         return program
 
     def get_node(self, token) -> Node:
-        print(token)
         if token == None:
             raise InvalidSyntaxError(token.file_name, token.line_number)
         if token.tokenType == TokenType.OP_NUMBER:

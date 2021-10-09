@@ -44,12 +44,10 @@ class Token():
 
 
 class Lexer():
-    def __init__(self, path):
+    def __init__(self, path, lines):
         self.path = path
-        self.lines = []
+        self.lines = lines
         self.program = []
-        with open(path, 'r') as f:
-            self.lines = f.readlines()
 
     def get_program(self):
         self.create_program()
@@ -67,7 +65,7 @@ class Lexer():
                     self.cmd_add(cmd)
                 elif cmd == "-":
                     self.cmd_sub(cmd)
-                elif cmd == "PRINT" or cmd == ".":
+                elif cmd == ".":
                     self.cmd_print(cmd)
                 elif cmd == "*":
                     self.cmd_mul(cmd)

@@ -9,6 +9,7 @@
         "request": "launch",
         "program": "main.py",
         "console": "integratedTerminal",
-        "args": ["sim", "test.st"]
+        "args": ["sim", "test.f"],
+        "cwd": "${fileDirname}"
     }]
 }
