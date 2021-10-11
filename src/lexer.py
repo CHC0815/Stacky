@@ -1,4 +1,5 @@
 from enum import Enum
+import shlex
 
 counter = 0
 
@@ -22,11 +23,22 @@ class TokenType(Enum):
     OP_EMIT = id()
     OP_WORD = id()
     OP_EQ = id()
+    OP_LT = id()
+    OP_GT = id()
     OP_COLON = id()
     OP_SEMICOLON = id()
     DEBUG_STACK = id()
     DEBUG_DICT = id()
     EOF = id()
+    OP_IF = id()
+    OP_THEN = id()
+    OP_ELSE = id()
+    OP_IF_WORD = id()
+    OP_PUTS = id()
+    OP_STRING = id()
+    OP_AND = id()
+    OP_OR = id()
+    OP_INVERT = id()
 
 
 class Token():
@@ -57,7 +69,7 @@ class Lexer():
     def create_program(self):
         self.line_counter = 1
         for line in self.lines:
-            cmds = line.split()
+            cmds = shlex.split(line, posix=False)
             for cmd in cmds:
                 if cmd.isdigit():
                     self.cmd_number(cmd)
@@ -71,13 +83,13 @@ class Lexer():
                     self.cmd_mul(cmd)
                 elif cmd == "/":
                     self.cmd_div(cmd)
-                elif cmd == "DUP":
+                elif cmd == "DUP" or cmd == "dup":
                     self.cmd_dup(cmd)
-                elif cmd == "SWAP":
+                elif cmd == "SWAP" or cmd == "swap":
                     self.cmd_swap(cmd)
-                elif cmd == "DROP":
+                elif cmd == "DROP" or cmd == "drop":
                     self.cmd_drop(cmd)
-                elif cmd == "EMIT":
+                elif cmd == "EMIT" or cmd == "emit":
                     self.cmd_emit(cmd)
                 elif cmd == ":":
                     self.cmd_colon(cmd)
@@ -89,8 +101,29 @@ class Lexer():
                     self.cmd_stack(cmd)
                 elif cmd == "DICT":
                     self.cmd_dict(cmd)
+                elif cmd == "if":
+                    self.cmd_if(cmd)
+                elif cmd == "then":
+                    self.cmd_then(cmd)
+                elif cmd == "puts":
+                    self.cmd_puts(cmd)
+                elif cmd == ">":
+                    self.cmd_gt(cmd)
+                elif cmd == "<":
+                    self.cmd_lt(cmd)
+                elif cmd == "and":
+                    self.cmd_and(cmd)
+                elif cmd == "or":
+                    self.cmd_or(cmd)
+                elif cmd == "invert":
+                    self.cmd_invert(cmd)
                 else:
-                    self.cmd_word(cmd)
+                    if cmd[-1] == '?':
+                        self.cmd_if_word(cmd)
+                    elif cmd[0] == '"' and cmd[-1] == '"':
+                        self.cmd_string(cmd)
+                    else:
+                        self.cmd_word(cmd)
         self.line_counter += 1
     # --------------------------
 
@@ -141,3 +174,33 @@ class Lexer():
 
     def cmd_semicolon(self, cmd):
         self.program.append(Token(TokenType.OP_SEMICOLON, None, self.path, self.line_counter))
+
+    def cmd_if(self, cmd):
+        self.program.append(Token(TokenType.OP_IF, None, self.path, self.line_counter))
+
+    def cmd_then(self, cmd):
+        self.program.append(Token(TokenType.OP_THEN, None, self.path, self.line_counter))
+
+    def cmd_if_word(self, cmd):
+        self.program.append(Token(TokenType.OP_IF_WORD, None, self.path, self.line_counter))
+
+    def cmd_puts(self, cmd):
+        self.program.append(Token(TokenType.OP_PUTS, None, self.path, self.line_counter))
+
+    def cmd_string(self, cmd):
+        self.program.append(Token(TokenType.OP_STRING, cmd, self.path, self.line_counter))
+
+    def cmd_lt(self, cmd):
+        self.program.append(Token(TokenType.OP_LT, None, self.path, self.line_counter))
+
+    def cmd_gt(self, cmd):
+        self.program.append(Token(TokenType.OP_GT, None, self.path, self.line_counter))
+
+    def cmd_and(self, cmd):
+        self.program.append(Token(TokenType.OP_AND, None, self.path, self.line_counter))
+
+    def cmd_or(self, cmd):
+        self.program.append(Token(TokenType.OP_OR, None, self.path, self.line_counter))
+
+    def cmd_invert(self, cmd):
+        self.program.append(Token(TokenType.OP_INVERT, None, self.path, self.line_counter))

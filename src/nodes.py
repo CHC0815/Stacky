@@ -1,7 +1,7 @@
 from typing import List
 from src.lexer import Token
 from src.stack import Stack
-from src.error import Error, NotEnoughOperantsError
+from src.error import Error, NotDefinedError, NotEnoughOperantsError
 from src.prog import Program
 
 
@@ -284,6 +284,7 @@ class NodeEquals(Node):
         comp += f'    cmp rax, rbx\n'
         comp += f'    cmove rcx, rdx\n'  # move if zero (equal)
         comp += f'    push rcx\n'
+        return comp
 
     def __str__(self) -> str:
         return f'EqualsNode'
@@ -300,7 +301,7 @@ class NodeDebugStack(Node):
         print(prog.stack)
 
     def compile(self, prog: Program) -> str:
-        return super().compile()
+        return super().compile(prog)
 
     def __str__(self) -> str:
         return f'DebugStackNode'
@@ -318,7 +319,7 @@ class NodeDebugDict(Node):
             print(f'{k} -> {v}\n')
 
     def compile(self, prog: Program) -> str:
-        return super().compile()
+        return super().compile(prog)
 
     def __str__(self) -> str:
         return f'DebugDictNode'
@@ -333,11 +334,17 @@ class NodeCall(Node):
         self.name = token.value
 
     def simulate(self, prog: Program):
+        if not self.name in prog.dict:
+            raise NotDefinedError(self.token.file_name, self.token.line_number, self.name)
         for i in range(len(prog.dict[self.name])):
             prog.nodes.insert(prog.index + i + 1, prog.dict[self.name][i])
 
     def compile(self, prog: Program) -> str:
-        return super().compile()
+        if not self.name in prog.dict:
+            raise NotDefinedError(self.token.file_name, self.token.line_number, self.name)
+        for i in range(len(prog.dict[self.name])):
+            prog.nodes.insert(prog.index + i + 1, prog.dict[self.name][i])
+        return ""
 
     def __str__(self) -> str:
         s = f'NodeCall:\n'
@@ -358,7 +365,8 @@ class NodeWord(Node):
         prog.dict[self.name] = self.content
 
     def compile(self, prog: Program) -> str:
-        return super().compile()
+        prog.dict[self.name] = self.content
+        return ""
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -370,3 +378,161 @@ class NodeWord(Node):
         for el in self.content:
             s += f'        {el}\n'
         return s
+
+
+class NodeString(Node):
+    def __init__(self, token: Token) -> None:
+        super().__init__(token)
+        self.string = token.value
+
+    def simulate(self, prog: Program):
+        prog.strings.append(self.string[1:-1])
+        index = len(prog.strings) - 1
+        prog.stack.push(index)  # pointer
+        prog.stack.push(len(self.string))  # length of string
+
+    def compile(self, prog: Program) -> str:
+        index = f'string_{len(prog.strings)}'  # string_0, string_1, ...
+        prog.strings.append(f'{index}: db {self.string}, 0x0a, 0x0d')
+        comp = f';---- string ----\n'
+        comp += f'    push {index}\n'  # push address
+        comp += f'    push {len(self.string)}\n'
+        return comp
+
+    def __str__(self) -> str:
+        return super().__repr__()
+
+    def __repr__(self) -> str:
+        s = f'StringNode:\n'
+        s += f'    String: {self.string}\n'
+        return s
+
+
+class NodePuts(Node):
+    def __init__(self, token: Token) -> None:
+        super().__init__(token)
+
+    def simulate(self, prog: Program):
+        if len(prog.stack) < 2:
+            raise NotEnoughOperantsError(self.token.file_name, self.token.line_number, 2)
+        a = prog.stack.pop()  # length
+        b = prog.stack.pop()  # pointer
+        string = prog.strings[b]
+        print(string)
+
+    def compile(self, prog: Program) -> str:
+        comp = f';--- prints string ---\n'
+        comp += f'pop rdx\n'  # length
+        comp += f'pop rsi\n'  # address / label
+        comp += f'call puts\n'
+        return comp
+
+    def __str__(self) -> str:
+        return super().__repr__()
+
+    def __repr__(self) -> str:
+        return super().__repr__()
+
+
+class NodeLessThan(Node):
+    def __init__(self, token: Token) -> None:
+        super().__init__(token)
+
+    def simulate(self, prog: Program):
+        if len(prog.stack) < 2:
+            raise NotEnoughOperantsError(self.token.file_name, self.token.line_number, 2)
+        a = prog.stack.pop()
+        b = prog.stack.pop()
+        prog.stack.push(int(a > b))
+
+    def compile(self, prog: Program) -> str:
+        return super().compile(prog)
+
+    def __str__(self) -> str:
+        return super().__repr__()
+
+    def __repr__(self) -> str:
+        return f'LessThanNode'
+
+
+class NodeGreaterThan(Node):
+    def __init__(self, token: Token) -> None:
+        super().__init__(token)
+
+    def simulate(self, prog: Program):
+        if len(prog.stack) < 2:
+            raise NotEnoughOperantsError(self.token.file_name, self.token.line_number, 2)
+        a = prog.stack.pop()
+        b = prog.stack.pop()
+        prog.stack.push(int(a < b))
+
+    def compile(self, prog: Program) -> str:
+        return super().compile(prog)
+
+    def __str__(self) -> str:
+        return super().__repr__()
+
+    def __repr__(self) -> str:
+        return f'GreaterThanNode'
+
+
+class NodeAnd(Node):
+    def __init__(self, token: Token) -> None:
+        super().__init__(token)
+
+    def simulate(self, prog: Program):
+        if len(prog.stack) < 2:
+            raise NotEnoughOperantsError(self.token.file_name, self.token.line_number, 2)
+        a = prog.stack.pop()
+        b = prog.stack.pop()
+        prog.stack.push(int(a and b))
+
+    def compile(self, prog: Program) -> str:
+        return super().compile(prog)
+
+    def __str__(self) -> str:
+        return super().__repr__()
+
+    def __repr__(self) -> str:
+        return f'AndNode'
+
+
+class NodeOr(Node):
+    def __init__(self, token: Token) -> None:
+        super().__init__(token)
+
+    def simulate(self, prog: Program):
+        if len(prog.stack) < 2:
+            raise NotEnoughOperantsError(self.token.file_name, self.token.line_number, 2)
+        a = prog.stack.pop()
+        b = prog.stack.pop()
+        prog.stack.push(int(a or b))
+
+    def compile(self, prog: Program) -> str:
+        return super().compile(prog)
+
+    def __str__(self) -> str:
+        return super().__repr__()
+
+    def __repr__(self) -> str:
+        return f'OrNode'
+
+
+class NodeInvert(Node):
+    def __init__(self, token: Token) -> None:
+        super().__init__(token)
+
+    def simulate(self, prog: Program):
+        if len(prog.stack) < 1:
+            raise NotEnoughOperantsError(self.token.file_name, self.token.line_number, 1)
+        a = prog.stack.pop()
+        prog.stack.push(int(not a))
+
+    def compile(self, prog: Program) -> str:
+        return super().compile(prog)
+
+    def __str__(self) -> str:
+        return super().__repr__()
+
+    def __repr__(self) -> str:
+        return f'InvertNode'

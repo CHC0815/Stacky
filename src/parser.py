@@ -80,5 +80,19 @@ class Parser():
             node = NodeWord(name, content)
             self.dict[name] = node
             return node
+        elif token.tokenType == TokenType.OP_STRING:
+            return NodeString(token)
+        elif token.tokenType == TokenType.OP_PUTS:
+            return NodePuts(token)
+        elif token.tokenType == TokenType.OP_LT:
+            return NodeLessThan(token)
+        elif token.tokenType == TokenType.OP_GT:
+            return NodeGreaterThan(token)
+        elif token.tokenType == TokenType.OP_AND:
+            return NodeAnd(token)
+        elif token.tokenType == TokenType.OP_OR:
+            return NodeOr(token)
+        elif token.tokenType == TokenType.OP_INVERT:
+            return NodeInvert(token)
         else:
             return NodeCall(token)

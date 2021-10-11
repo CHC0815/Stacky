@@ -7,3 +7,4 @@ class Program():
         self.dict = dict
         self.stack = Stack()
         self.index = 0
+        self.strings = []

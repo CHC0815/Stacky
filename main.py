@@ -19,12 +19,11 @@ def simulate_program(prog: Program):
     print("Simulated")
 
 
-def compile_program(prog):
-    program = prog.program
+def compile_program(prog: Program):
     filename = sys.argv[2].split('.')[0] + ".asm"
     with open(filename, 'w') as f:
         f.write("BITS 64\n")
-        f.write("segment .text\n")
+        f.write("section .text\n")
         f.write("print:\n")
         f.write("    mov r9, -3689348814741910323\n")
         f.write("    sub rsp, 40\n")
@@ -58,78 +57,29 @@ def compile_program(prog):
         f.write("    syscall\n")
         f.write("    add rsp, 40\n")
         f.write("    ret\n")
+        f.write(f'puts:\n')
+        f.write(f'    mov rax, 0x1\n')
+        f.write(f'    mov rdi, 0x1\n')
+        # f.write(f'    mov rsi, address\n') move string address to rsi
+        # f.write(f'    mov rdx, length\n') move string length to rdx
+        f.write(f'    syscall\n')
+        f.write(f'    ret\n')
         f.write(f'global _start\n')
         f.write(f'_start:\n')
-        for el in program:
-            if el.tokenType == TokenType.OP_NUMBER:
-                f.write(f';--- push {el.value} to stack ---\n')
-                f.write(f'    mov rax, {el.value}\n')
-                f.write(f'    push rax\n')
-            elif el.tokenType == TokenType.OP_ADD:
-                f.write(f';--- add two numbers ---\n')
-                f.write(f'    pop rax\n')
-                f.write(f'    pop rbx\n')
-                f.write(f'    add rax, rbx\n')
-                f.write(f'    push rax\n')
-            elif el.tokenType == TokenType.OP_SUB:
-                f.write(f';--- subtract two numbers ---\n')
-                f.write(f'    pop rax\n')
-                f.write(f'    pop rbx\n')
-                f.write(f'    sub rbx, rax\n')
-                f.write(f'    push rax\n')
-            elif el.tokenType == TokenType.OP_PRINT:
-                f.write(f';--- print number ---\n')
-                f.write(f'    pop rdi\n')
-                f.write(f'    call print\n')
-            elif el.tokenType == TokenType.OP_MUL:
-                f.write(f';--- multiplies two numbers ---\n')
-                f.write(f'    pop rax\n')
-                f.write(f'    pop rbx\n')
-                f.write(f'    imul rax, rbx\n')
-                f.write(f'    push rax\n')
-            elif el.tokenType == TokenType.OP_DIV:
-                f.write(f';--- divides two numbers ---\n')
-                f.write(f'    pop rax\n')
-                f.write(f'    pop rbx\n')
-                f.write(f'    idiv rax, rbx\n')
-                f.write(f'    push rax\n')
-            elif el.tokenType == TokenType.OP_DUP:
-                f.write(f';--- dupilicates a number ---\n')
-                f.write(f'    pop rax\n')
-                f.write(f'    push rax\n')
-                f.write(f'    push rax\n')
-            elif el.tokenType == TokenType.OP_SWAP:
-                f.write(f';--- swapes two numbers ---\n')
-                f.write(f'    pop rax\n')
-                f.write(f'    pop rbx\n')
-                f.write(f'    push rax\n')
-                f.write(f'    push rax\n')
-            elif el.tokenType == TokenType.OP_DROP:
-                f.write(f';--- drops the first number ---\n')
-                f.write(f'    pop rax\n')
-            elif el.tokenType == TokenType.OP_EMIT:
-                f.write(f';--- prints the number as ascii ---\n')
-                # TODO: emit x86 64 assembly for emit
-            elif el.tokenType == TokenType.OP_EQ:
-                f.write(f';--- checks for equality of two numbers ---\n')
-                f.write(f'    mov rcx, 0\n')  # false
-                f.write(f'    mov rdx, 1\n')  # true
-                f.write(f'    pop rax\n')
-                f.write(f'    pop rbx\n')
-                f.write(f'    cmp rax, rbx\n')
-                f.write(f'    cmove rcx, rdx\n')  # move if zero (equal)
-                f.write(f'    push rcx\n')
-            elif el.tokenType == TokenType.DEBUG_STACK:
-                assert False, "Will not be implemented!"
-            elif el.tokenType == TokenType.DEBUG_DICT:
-                assert False, "Will not be implemented!"
-            else:
-                assert False, f'Something went wrong filename: {sys.argv[2]}/{el.line_number}'
+
+        while prog.index < len(prog.nodes):
+            asm = prog.nodes[prog.index].compile(prog)
+            prog.index += 1
+            f.write(asm)
 
         f.write(f'; --- exit ---\n')
         f.write(f'    mov rax, 60\n')
         f.write(f'    mov rdi, 0\n')
         f.write(f'    syscall\n')
+        f.write(f'section .data\n')
+        for string in prog.strings:
+            f.write(f'{string}')
+
     compile(filename)
 
 

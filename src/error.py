@@ -35,3 +35,16 @@ class InvalidSyntaxError(Error):
 
     def __repr__(self) -> str:
         return super().__repr__() + f' {self.token}'
+
+
+class NotDefinedError(Error):
+    def __init__(self, fn, ln, name):
+        super().__init__(fn, ln)
+        self.name = name
+        self.message = f'Word is not defined - {self.name}'
+
+    def __str__(self) -> str:
+        return super().__str__()
+
+    def __repr__(self) -> str:
+        return super().__repr__()
