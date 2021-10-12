@@ -39,6 +39,7 @@ class TokenType(Enum):
     OP_AND = id()
     OP_OR = id()
     OP_INVERT = id()
+    OP_MOD = id()
 
 
 class Token():
@@ -105,6 +106,8 @@ class Lexer():
                     self.cmd_if(cmd)
                 elif cmd == "then":
                     self.cmd_then(cmd)
+                elif cmd == "else":
+                    self.cmd_else(cmd)
                 elif cmd == "puts":
                     self.cmd_puts(cmd)
                 elif cmd == ">":
@@ -117,6 +120,8 @@ class Lexer():
                     self.cmd_or(cmd)
                 elif cmd == "invert":
                     self.cmd_invert(cmd)
+                elif cmd == "mod":
+                    self.cmd_mod(cmd)
                 else:
                     if cmd[-1] == '?':
                         self.cmd_if_word(cmd)
@@ -182,7 +187,7 @@ class Lexer():
         self.program.append(Token(TokenType.OP_THEN, None, self.path, self.line_counter))
 
     def cmd_if_word(self, cmd):
-        self.program.append(Token(TokenType.OP_IF_WORD, None, self.path, self.line_counter))
+        self.program.append(Token(TokenType.OP_IF_WORD, cmd, self.path, self.line_counter))
 
     def cmd_puts(self, cmd):
         self.program.append(Token(TokenType.OP_PUTS, None, self.path, self.line_counter))
@@ -204,3 +209,9 @@ class Lexer():
 
     def cmd_invert(self, cmd):
         self.program.append(Token(TokenType.OP_INVERT, None, self.path, self.line_counter))
+
+    def cmd_mod(self, cmd):
+        self.program.append(Token(TokenType.OP_MOD, None, self.path, self.line_counter))
+
+    def cmd_else(self, cmd):
+        self.program.append(Token(TokenType.OP_ELSE, None, self.path, self.line_counter))

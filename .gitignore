@@ -1,5 +1,6 @@
 *.o
-test
-test.*
+main
+main.*
 __pycache__
 debug/
+.VSCodeCounter/

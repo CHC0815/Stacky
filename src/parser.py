@@ -21,16 +21,21 @@ class Parser():
     # ------------------
 
     def parse(self) -> Program:
-        nodes: List[Node] = []
+        self.nodes: List[Node] = []
         self.dict = {'ADD': '+'}
 
         token = self.get_token()
         while token.tokenType != TokenType.EOF:
-            nodes.append(self.get_node(token))
+            self.nodes.append(self.get_node(token))
             self.advance()
             token = self.get_token()
-        program = Program(nodes, self.dict)
+        program = Program(self.nodes, self.dict)
         return program
+
+    def is_conditional(self, token: Token):
+        if token in [TokenType.OP_EQ, TokenType.OP_LT, TokenType.OP_GT]:
+            return True
+        return False
 
     def get_node(self, token) -> Node:
         if token == None:
@@ -67,19 +72,65 @@ class Parser():
             if tok == None:
                 raise InvalidSyntaxError(tok.file_name, tok.file_number)
             name = tok.value
-            content: List[Node] = []
 
-            self.advance()
-            next: Token = self.get_token()
-            while next.tokenType != TokenType.OP_SEMICOLON:
-                content.append(self.get_node(next))
-                self.advance()
-                next = self.get_token()
+            if name[-1] == '?':
+                # if then TODO: ELSE
+                node = NodeIf(token, name)
+                condition: List[Node] = []
+                content: List[Node] = []
+                else_case: List[Node] = []
+                self.advance()  # advance name
+                next: Token = self.get_token()
 
-            # self.advance()  # advance semicolon
-            node = NodeWord(name, content)
-            self.dict[name] = node
-            return node
+                while next.tokenType != TokenType.OP_IF:
+                    condition.append(self.get_node(next))
+                    self.advance()
+                    next = self.get_token()
+
+                self.advance()  # advance if
+                next: Token = self.get_token()
+
+                while next.tokenType != TokenType.OP_THEN and next.tokenType != TokenType.OP_ELSE:
+                    content.append(self.get_node(next))
+                    self.advance()
+                    next = self.get_token()
+
+                # no else case
+                if next.tokenType == TokenType.OP_THEN:
+                    self.advance()  # then
+                    node.condition = condition
+                    node.content = content
+                    node.else_part = []
+                    return node
+
+                # else case
+                self.advance()  # else
+                next: Token = self.get_token()
+
+                while next.tokenType != TokenType.OP_THEN:
+                    else_case.append(self.get_node(next))
+                    self.advance()
+                    next = self.get_token()
+
+                self.advance()  # then
+                node.condition = condition
+                node.content = content
+                node.else_part = else_case
+                return node
+
+            else:
+                # start word
+                content: List[Node] = []
+                self.advance()  # advance name
+                next: Token = self.get_token()
+                while next.tokenType != TokenType.OP_SEMICOLON:
+                    content.append(self.get_node(next))
+                    self.advance()
+                    next = self.get_token()
+                node = NodeWord(name, content)
+                self.dict[name] = node
+                return node
+
         elif token.tokenType == TokenType.OP_STRING:
             return NodeString(token)
         elif token.tokenType == TokenType.OP_PUTS:
@@ -94,5 +145,13 @@ class Parser():
             return NodeOr(token)
         elif token.tokenType == TokenType.OP_INVERT:
             return NodeInvert(token)
+        elif token.tokenType == TokenType.OP_MOD:
+            return NodeMod(token)
         else:
-            return NodeCall(token)
+            if token.value == None:  # TODO: fix
+                print(token)
+                raise Error(token.file_name, token.line_number)
+            elif token.value[-1] == '?':
+                return NodeCallIf(token)
+            else:
+                return NodeCall(token)

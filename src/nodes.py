@@ -1,7 +1,7 @@
 from typing import List
 from src.lexer import Token
 from src.stack import Stack
-from src.error import Error, NotDefinedError, NotEnoughOperantsError
+from src.error import Error, InvalidSyntaxError, NotDefinedError, NotEnoughOperantsError
 from src.prog import Program
 
 
@@ -446,7 +446,15 @@ class NodeLessThan(Node):
         prog.stack.push(int(a > b))
 
     def compile(self, prog: Program) -> str:
-        return super().compile(prog)
+        comp = f';--- checks for equality of two numbers ---\n'
+        comp += f'    mov rcx, 0\n'  # true
+        comp += f'    mov rdx, 1\n'  # false
+        comp += f'    pop rax\n'
+        comp += f'    pop rbx\n'
+        comp += f'    cmp rax, rbx\n'
+        comp += f'    cmovg rcx, rdx\n'  # move if greater than (the opposite)
+        comp += f'    push rcx\n'
+        return comp
 
     def __str__(self) -> str:
         return super().__repr__()
@@ -467,7 +475,15 @@ class NodeGreaterThan(Node):
         prog.stack.push(int(a < b))
 
     def compile(self, prog: Program) -> str:
-        return super().compile(prog)
+        comp = f';--- checks for equality of two numbers ---\n'
+        comp += f'    mov rcx, 0\n'  # true
+        comp += f'    mov rdx, 1\n'  # false
+        comp += f'    pop rax\n'
+        comp += f'    pop rbx\n'
+        comp += f'    cmp rax, rbx\n'
+        comp += f'    cmovl rcx, rdx\n'  # move if less than
+        comp += f'    push rcx\n'
+        return comp
 
     def __str__(self) -> str:
         return super().__repr__()
@@ -536,3 +552,86 @@ class NodeInvert(Node):
 
     def __repr__(self) -> str:
         return f'InvertNode'
+
+
+class NodeMod(Node):
+    def __init__(self, token: Token) -> None:
+        super().__init__(token)
+
+    def simulate(self, prog: Program):
+        if len(prog.stack) < 2:
+            raise NotEnoughOperantsError(self.token.file_name, self.token.line_number, 2)
+        a = prog.stack.pop()
+        b = prog.stack.pop()
+        prog.stack.push(int(b % a))
+
+    def compile(self, prog: Program) -> str:
+        return super().compile(prog)
+
+    def __str__(self) -> str:
+        return super().__repr__()
+
+    def __repr__(self) -> str:
+        return f'ModNode'
+
+
+class NodeIf(Node):
+    def __init__(self, token: Token, name: str) -> None:
+        super().__init__(token)
+        self.name = name
+        self.condition: List[Node] = []
+        self.content: List[Node] = []
+        self.else_part: List[Node] = []
+
+    def simulate(self, prog: Program):
+        prog.dict[self.name] = (self.condition, self.content, self.else_part)
+
+    def compile(self, prog: Program) -> str:
+        return super().compile(prog)
+
+    def __str__(self) -> str:
+        return f'NodeIf'
+
+    def __repr__(self) -> str:
+        return f'NodeIf'
+
+
+class NodeCallIf(Node):
+    def __init__(self, token: Token) -> None:
+        super().__init__(token)
+        self.name = self.token.value
+
+    def simulate(self, prog: Program):
+        if not self.name in prog.dict:
+            raise NotDefinedError(self.token.file_name, self.token.line_number, self.name)
+
+        self.condition = prog.dict[self.name][0]
+        self.content = prog.dict[self.name][1]
+        self.else_part = prog.dict[self.name][2]
+
+        if self.condition == []:
+            raise NotEnoughOperantsError(self.token.file_name, self.token.line_number, -1)
+        # add condition part
+        for i in range(len(self.condition)):
+            self.condition[i].simulate(prog)
+
+        # last thing on the stack must be 0 or 1
+        a = prog.stack.pop()
+        if a != 0 and a != 1:
+            raise InvalidSyntaxError(self.token.file_name, self.token.line_number, self.token)
+
+        if a == 1:
+            for i in range(len(self.content)):
+                prog.nodes.insert(prog.index + i + 1, self.content[i])
+        else:
+            for i in range(len(self.else_part)):
+                prog.nodes.insert(prog.index + i + 1, self.else_part[i])
+
+    def compile(self, prog: Program) -> str:
+        return super().compile(prog)
+
+    def __str__(self) -> str:
+        return f'CallIfNode'
+
+    def __repr__(self) -> str:
+        return f'CallIfNode'

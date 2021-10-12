@@ -1,13 +1,10 @@
 from src.nodes import *
 from enum import Enum
-import parser
 from typing import List
 import sys
 import subprocess
 
-from src.error import Error, NotEnoughOperantsError
-from src.lexer import TokenType, Token, Lexer
-from src.stack import Stack
+from src.lexer import Lexer
 from src.parser import Parser
 from src.prog import Program
 
@@ -16,7 +13,6 @@ def simulate_program(prog: Program):
     while prog.index < len(prog.nodes):
         prog.nodes[prog.index].simulate(prog)
         prog.index += 1
-    print("Simulated")
 
 
 def compile_program(prog: Program):
