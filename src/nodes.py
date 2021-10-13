@@ -422,9 +422,9 @@ class NodePuts(Node):
 
     def compile(self, prog: Program) -> str:
         comp = f';--- prints string ---\n'
-        comp += f'pop rdx\n'  # length
-        comp += f'pop rsi\n'  # address / label
-        comp += f'call puts\n'
+        comp += f'    pop rdx\n'  # length
+        comp += f'    pop rsi\n'  # address / label
+        comp += f'    call puts\n'
         return comp
 
     def __str__(self) -> str:
@@ -504,7 +504,24 @@ class NodeAnd(Node):
         prog.stack.push(int(a and b))
 
     def compile(self, prog: Program) -> str:
-        return super().compile(prog)
+        # compare and jump to false if false
+        # if not jumped push 1 and jump to end
+        comp = f';---- and ----\n'
+        comp += f'    pop rax\n'
+        comp += f'    pop rbx\n'
+        comp += f'    cmp rax, 1\n'
+        false = prog.get_label()
+        comp += f'    jne {false}\n'
+        comp += f'    cmp rbx, 1\n'
+        comp += f'    jne {false}\n'
+        comp += f'    push 1\n'         # true
+        end = prog.get_label()
+        comp += f'    jmp {end}\n'
+        comp += f'{false}:\n'
+        comp += f'    push 0\n'         # false
+        comp += f'{end}:\n'
+        comp += f'    nop\n'
+        return comp
 
     def __str__(self) -> str:
         return super().__repr__()
@@ -525,7 +542,22 @@ class NodeOr(Node):
         prog.stack.push(int(a or b))
 
     def compile(self, prog: Program) -> str:
-        return super().compile(prog)
+        comp = f';---- or ----\n'
+        comp += f'    pop rax\n'
+        comp += f'    pop rbx\n'
+        true = prog.get_label()
+        end = prog.get_label()
+        comp += f'    cmp rax, 1\n'
+        comp += f'    je {true}\n'
+        comp += f'    cmp rbx, 1\n'
+        comp += f'    je {true}\n'
+        comp += f'    push 0\n'
+        comp += f'    jmp {end}\n'
+        comp += f'{true}:\n'
+        comp += f'    push 1\n'
+        comp += f'{end}:\n'
+        comp += f'    nop'
+        return comp
 
     def __str__(self) -> str:
         return super().__repr__()
@@ -565,8 +597,15 @@ class NodeMod(Node):
         b = prog.stack.pop()
         prog.stack.push(int(b % a))
 
+    # TODO: fix mod
     def compile(self, prog: Program) -> str:
-        return super().compile(prog)
+        comp = f';---- mod ----\n'
+        comp += f'    pop rbx\n'
+        comp += f'    pop rax\n'    # divide eax by rbx
+        comp += f'    div rbx\n'
+        # remainder stored in rdx
+        comp += f'    push rdx\n'
+        return comp
 
     def __str__(self) -> str:
         return super().__repr__()
@@ -587,19 +626,34 @@ class NodeIf(Node):
         prog.dict[self.name] = (self.condition, self.content, self.else_part)
 
     def compile(self, prog: Program) -> str:
-        return super().compile(prog)
+        prog.dict[self.name] = (self.condition, self.content, self.else_part)
+        return ''
 
     def __str__(self) -> str:
-        return f'NodeIf'
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return f'NodeIf'
+        s = f'CallIfNode:\n'
+        s += f'    Condition:\n'
+        for el in self.condition:
+            s += f'        {el}\n'
+        s += f'    If Part:\n'
+        for el in self.content:
+            s += f'        {el}\n'
+        s += f'    Else Part:\n'
+        for el in self.else_part:
+            s += f'        {el}\n'
+
+        return s
 
 
 class NodeCallIf(Node):
     def __init__(self, token: Token) -> None:
         super().__init__(token)
         self.name = self.token.value
+        self.condition = []
+        self.content = []
+        self.else_part = []
 
     def simulate(self, prog: Program):
         if not self.name in prog.dict:
@@ -628,10 +682,41 @@ class NodeCallIf(Node):
                 prog.nodes.insert(prog.index + i + 1, self.else_part[i])
 
     def compile(self, prog: Program) -> str:
-        return super().compile(prog)
+        self.condition = prog.dict[self.name][0]
+        self.content = prog.dict[self.name][1]
+        self.else_part = prog.dict[self.name][2]
+
+        if self.condition == []:
+            raise NotEnoughOperantsError(self.token.file_name, self.token.line_number, -1)
+        comp = f';---- if node ----\n'
+        for el in self.condition:
+            comp += el.compile(prog)
+
+        comp += f'    pop rax\n'
+        comp += f'    cmp rax, 1\n'  # true
+        else_part = prog.get_label()
+        comp += f'    jne {else_part}\n'
+
+        end = prog.get_label()
+        # true part
+        for el in self.content:
+            comp += el.compile(prog)
+        comp += f'    jmp {end}\n'
+
+        # else part
+        comp += f'{else_part}:\n'
+        for el in self.else_part:
+            comp += el.compile(prog)
+
+        comp += f'{end}:\n'
+        comp += f'    nop\n'
+
+        return comp
 
     def __str__(self) -> str:
-        return f'CallIfNode'
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return f'CallIfNode'
+        s = f'CallIfNode:\n'
+        s += f'    Name: {self.name}\n'
+        return s

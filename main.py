@@ -74,7 +74,7 @@ def compile_program(prog: Program):
         f.write(f'    syscall\n')
         f.write(f'section .data\n')
         for string in prog.strings:
-            f.write(f'{string}')
+            f.write(f'{string}\n')
 
     compile(filename)
 

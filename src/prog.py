@@ -8,3 +8,9 @@ class Program():
         self.stack = Stack()
         self.index = 0
         self.strings = []
+        self.label_counter = 0
+
+    def get_label(self) -> str:
+        label = f'.L{self.label_counter}'
+        self.label_counter += 1
+        return label

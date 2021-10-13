@@ -104,7 +104,7 @@ class Lexer():
                     self.cmd_dict(cmd)
                 elif cmd == "if":
                     self.cmd_if(cmd)
-                elif cmd == "then":
+                elif cmd == "then" or cmd == "end":
                     self.cmd_then(cmd)
                 elif cmd == "else":
                     self.cmd_else(cmd)
