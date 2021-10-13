@@ -600,8 +600,10 @@ class NodeMod(Node):
     # TODO: fix mod
     def compile(self, prog: Program) -> str:
         comp = f';---- mod ----\n'
+        comp += f'    xor rax, rax\n'
+        comp += f'    xor rdx, rdx\n'
         comp += f'    pop rbx\n'
-        comp += f'    pop rax\n'    # divide eax by rbx
+        comp += f'    pop rax\n'    # divide rax by rbx
         comp += f'    div rbx\n'
         # remainder stored in rdx
         comp += f'    push rdx\n'

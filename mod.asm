@@ -40,6 +40,22 @@ puts:
     ret
 global _start
 _start:
+;--- push 4 to stack ---
+    mov rax, 4
+    push rax
+;--- push 5 to stack ---
+    mov rax, 5
+    push rax
+;---- mod ----
+    xor rax, rax
+    xor rdx, rdx
+    pop rbx
+    pop rax
+    div rbx
+    push rdx
+;--- print number ---
+    pop rdi
+    call print
 ;--- push 7 to stack ---
     mov rax, 7
     push rax
@@ -47,6 +63,24 @@ _start:
     mov rax, 5
     push rax
 ;---- mod ----
+    xor rax, rax
+    xor rdx, rdx
+    pop rbx
+    pop rax
+    div rbx
+    push rdx
+;--- print number ---
+    pop rdi
+    call print
+;--- push 5 to stack ---
+    mov rax, 5
+    push rax
+;--- push 5 to stack ---
+    mov rax, 5
+    push rax
+;---- mod ----
+    xor rax, rax
+    xor rdx, rdx
     pop rbx
     pop rax
     div rbx
