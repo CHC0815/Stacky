@@ -119,15 +119,38 @@ class Parser():
                 return node
 
             else:
-                # start word
+                # start word or loop
+                is_loop = False
                 content: List[Node] = []
                 self.advance()  # advance name
                 next: Token = self.get_token()
                 while next.tokenType != TokenType.OP_SEMICOLON:
+                    if next.tokenType == TokenType.OP_DO:
+                        is_loop = True
+                        break
                     content.append(self.get_node(next))
                     self.advance()
                     next = self.get_token()
-                node = NodeWord(name, content)
+
+                # return word node
+                if not is_loop:
+                    node = NodeWord(name, content)
+                    self.dict[name] = node
+                    return node
+
+                # continue with loop node
+                # content contains from to numbers
+                self.advance()  # advance "do"
+                next: Token = self.get_token()
+                body: List[Node] = []
+                while next.tokenType != TokenType.OP_LOOP:
+                    body.append(self.get_node(next))
+                    self.advance()
+                    next = self.get_token()
+
+                self.advance()  # advance "loop"
+
+                node = NodeLoop(token, name, content, body)
                 self.dict[name] = node
                 return node
 
@@ -147,8 +170,10 @@ class Parser():
             return NodeInvert(token)
         elif token.tokenType == TokenType.OP_MOD:
             return NodeMod(token)
+        elif token.tokenType == TokenType.OP_CR:
+            return NodeCarriageReturn(token)
         else:
-            if token.value == None:  # TODO: fix
+            if token.value == None:
                 print(token)
                 raise Error(token.file_name, token.line_number)
             elif token.value[-1] == '?':

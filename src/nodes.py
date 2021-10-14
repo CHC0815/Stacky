@@ -1,5 +1,5 @@
 from typing import List
-from src.lexer import Token
+from src.lexer import Token, TokenType
 from src.stack import Stack
 from src.error import Error, InvalidSyntaxError, NotDefinedError, NotEnoughOperantsError
 from src.prog import Program
@@ -10,10 +10,10 @@ class Node():
         self.token = token
 
     def __str__(self) -> str:
-        return str(self.token)
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return repr(self.token)
+        return f'{self.token}'
 
     def simulate(self, prog: Program):
         raise NotImplementedError()
@@ -38,10 +38,10 @@ class NodeNumber(Node):
         return comp
 
     def __str__(self) -> str:
-        return f'NumberNode: {self.token.value}'
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return self.__str__()
+        return f'NumberNode: {self.token.value}'
 
 
 class NodeAdd(Node):
@@ -64,10 +64,10 @@ class NodeAdd(Node):
         return comp
 
     def __str__(self) -> str:
-        return f'AddNode'
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return super().__str__()
+        return f'AddNode'
 
 
 class NodeSubtract(Node):
@@ -90,10 +90,10 @@ class NodeSubtract(Node):
         return comp
 
     def __str__(self) -> str:
-        return f'SubtractNode'
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return super().__str__()
+        return f'SubtractNode'
 
 
 class NodePrint(Node):
@@ -113,10 +113,10 @@ class NodePrint(Node):
         return comp
 
     def __str__(self) -> str:
-        return f'PrintNode'
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return super().__str__()
+        return f'PrintNode'
 
 
 class NodeMultiply(Node):
@@ -139,10 +139,10 @@ class NodeMultiply(Node):
         return comp
 
     def __str__(self) -> str:
-        return f'MultiplyNode'
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return super().__str__()
+        return f'MultiplyNode'
 
 
 class NodeDivide(Node):
@@ -165,10 +165,10 @@ class NodeDivide(Node):
         return comp
 
     def __str__(self) -> str:
-        return f'DivideNode'
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return super().__str__()
+        return f'DivideNode'
 
 
 class NodeDupilcate(Node):
@@ -190,10 +190,10 @@ class NodeDupilcate(Node):
         return comp
 
     def __str__(self) -> str:
-        return f'DuplicateNode'
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return super().__str__()
+        return f'DuplicateNode'
 
 
 class NodeSwap(Node):
@@ -217,10 +217,10 @@ class NodeSwap(Node):
         return comp
 
     def __str__(self) -> str:
-        return f'SwapNode'
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return super().__str__()
+        return f'SwapNode'
 
 
 class NodeDrop(Node):
@@ -238,10 +238,10 @@ class NodeDrop(Node):
         return comp
 
     def __str__(self) -> str:
-        return f'DropNode'
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return super().__str__()
+        return f'DropNode'
 
 
 class NodeEmit(Node):
@@ -258,10 +258,10 @@ class NodeEmit(Node):
         return super().compile()
 
     def __str__(self) -> str:
-        return f'EmitNode'
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return super().__str__()
+        return f'EmitNode'
 
 
 class NodeEquals(Node):
@@ -287,10 +287,10 @@ class NodeEquals(Node):
         return comp
 
     def __str__(self) -> str:
-        return f'EqualsNode'
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return super().__str__()
+        return f'EqualsNode'
 
 
 class NodeDebugStack(Node):
@@ -304,10 +304,10 @@ class NodeDebugStack(Node):
         return super().compile(prog)
 
     def __str__(self) -> str:
-        return f'DebugStackNode'
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return super().__str__()
+        return f'DebugStackNode'
 
 
 class NodeDebugDict(Node):
@@ -322,10 +322,10 @@ class NodeDebugDict(Node):
         return super().compile(prog)
 
     def __str__(self) -> str:
-        return f'DebugDictNode'
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return super().__str__()
+        return f'DebugDictNode'
 
 
 class NodeCall(Node):
@@ -336,8 +336,44 @@ class NodeCall(Node):
     def simulate(self, prog: Program):
         if not self.name in prog.dict:
             raise NotDefinedError(self.token.file_name, self.token.line_number, self.name)
-        for i in range(len(prog.dict[self.name])):
-            prog.nodes.insert(prog.index + i + 1, prog.dict[self.name][i])
+        node = prog.dict[self.name]
+
+        if isinstance(node, NodeWord):
+            for i in range(len(prog.dict[self.name])):
+                prog.nodes.insert(prog.index + i + 1, prog.dict[self.name][i])
+
+        elif isinstance(node, NodeLoop):
+            node = prog.dict[self.name]
+            self.content = node.content
+            self.body = node.body
+
+            # simulate loop body
+            for el in self.content:
+                el.simulate(prog)
+
+            if len(prog.stack) < 2:
+                raise NotEnoughOperantsError(self.token.file_name, self.token.line_number, 2)
+
+            a = prog.stack.pop()  # begin
+            b = prog.stack.pop()  # end
+            self.counter = a
+
+            while self.counter < b:
+                # simulate body but check for Word "i" -> replace with self.counter
+
+                for el in self.body:
+                    if isinstance(el, NodeCall):
+                        if el.name == "i":
+                            token = Token(TokenType.OP_NUMBER, self.counter, "internal counter variable", -1)
+                            node = NodeNumber(token)
+                            node.simulate(prog)
+                        else:
+                            # normal
+                            el.simulate(prog)
+                    else:
+                        el.simulate(prog)
+
+                self.counter += 1
 
     def compile(self, prog: Program) -> str:
         if not self.name in prog.dict:
@@ -393,14 +429,14 @@ class NodeString(Node):
 
     def compile(self, prog: Program) -> str:
         index = f'string_{len(prog.strings)}'  # string_0, string_1, ...
-        prog.strings.append(f'{index}: db {self.string}, 0x0a, 0x0d')
+        prog.strings.append(f'{index}: db {self.string}')  # , 0x0a, 0x0d')
         comp = f';---- string ----\n'
         comp += f'    push {index}\n'  # push address
         comp += f'    push {len(self.string)}\n'
         return comp
 
     def __str__(self) -> str:
-        return super().__repr__()
+        return self.__repr__()
 
     def __repr__(self) -> str:
         s = f'StringNode:\n'
@@ -428,10 +464,10 @@ class NodePuts(Node):
         return comp
 
     def __str__(self) -> str:
-        return super().__repr__()
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return super().__repr__()
+        return f'PutsNode'
 
 
 class NodeLessThan(Node):
@@ -457,7 +493,7 @@ class NodeLessThan(Node):
         return comp
 
     def __str__(self) -> str:
-        return super().__repr__()
+        return self.__repr__()
 
     def __repr__(self) -> str:
         return f'LessThanNode'
@@ -486,7 +522,7 @@ class NodeGreaterThan(Node):
         return comp
 
     def __str__(self) -> str:
-        return super().__repr__()
+        return self.__repr__()
 
     def __repr__(self) -> str:
         return f'GreaterThanNode'
@@ -524,7 +560,7 @@ class NodeAnd(Node):
         return comp
 
     def __str__(self) -> str:
-        return super().__repr__()
+        return self.__repr__()
 
     def __repr__(self) -> str:
         return f'AndNode'
@@ -560,7 +596,7 @@ class NodeOr(Node):
         return comp
 
     def __str__(self) -> str:
-        return super().__repr__()
+        return self.__repr__()
 
     def __repr__(self) -> str:
         return f'OrNode'
@@ -580,7 +616,7 @@ class NodeInvert(Node):
         return super().compile(prog)
 
     def __str__(self) -> str:
-        return super().__repr__()
+        return self.__repr__()
 
     def __repr__(self) -> str:
         return f'InvertNode'
@@ -597,7 +633,6 @@ class NodeMod(Node):
         b = prog.stack.pop()
         prog.stack.push(int(b % a))
 
-    # TODO: fix mod
     def compile(self, prog: Program) -> str:
         comp = f';---- mod ----\n'
         comp += f'    xor rax, rax\n'
@@ -610,7 +645,7 @@ class NodeMod(Node):
         return comp
 
     def __str__(self) -> str:
-        return super().__repr__()
+        return self.__repr__()
 
     def __repr__(self) -> str:
         return f'ModNode'
@@ -722,3 +757,53 @@ class NodeCallIf(Node):
         s = f'CallIfNode:\n'
         s += f'    Name: {self.name}\n'
         return s
+
+
+class NodeLoop(Node):
+    def __init__(self, token: Token, name: str,  content: List[Node], body: List[Node]) -> None:
+        super().__init__(token)
+        self.name = name
+        self.content = content
+        self.body = body
+        self.counter = 0
+
+    def simulate(self, prog: Program):
+        pass
+
+    def compile(self, prog: Program) -> str:
+        # TODO: implement
+        return super().compile(prog)
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+    def __repr__(self) -> str:
+        s = f'LoopNode:\n'
+        s += f'    Content:\n'
+        for el in self.content:
+            s += f'        {el}\n'
+        s += f'    Body:\n'
+        for el in self.body:
+            s += f'        {el}\n'
+
+        return s
+
+
+class NodeCarriageReturn(Node):
+    def __init__(self, token: Token) -> None:
+        super().__init__(token)
+
+    def simulate(self, prog: Program):
+        string_token = Token(TokenType.OP_STRING, "\n", "internal", -1)
+        a = NodeString(string_token)
+        a.simulate(prog)
+
+    def compile(self, prog: Program) -> str:
+        # TODO: implement
+        return super().compile(prog)
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+    def __repr__(self) -> str:
+        return f'CarriageReturnNode'

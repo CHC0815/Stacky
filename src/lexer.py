@@ -40,6 +40,9 @@ class TokenType(Enum):
     OP_OR = id()
     OP_INVERT = id()
     OP_MOD = id()
+    OP_DO = id()
+    OP_LOOP = id()
+    OP_CR = id()
 
 
 class Token():
@@ -122,6 +125,12 @@ class Lexer():
                     self.cmd_invert(cmd)
                 elif cmd == "mod":
                     self.cmd_mod(cmd)
+                elif cmd == "do":
+                    self.cmd_do(cmd)
+                elif cmd == "loop":
+                    self.cmd_loop(cmd)
+                elif cmd == "cr":
+                    self.cmd_cr(cmd)
                 else:
                     if cmd[-1] == '?':
                         self.cmd_if_word(cmd)
@@ -129,7 +138,7 @@ class Lexer():
                         self.cmd_string(cmd)
                     else:
                         self.cmd_word(cmd)
-        self.line_counter += 1
+            self.line_counter += 1
     # --------------------------
 
     def cmd_number(self, cmd):
@@ -215,3 +224,12 @@ class Lexer():
 
     def cmd_else(self, cmd):
         self.program.append(Token(TokenType.OP_ELSE, None, self.path, self.line_counter))
+
+    def cmd_do(self, cmd):
+        self.program.append(Token(TokenType.OP_DO, None, self.path, self.line_counter))
+
+    def cmd_loop(self, cmd):
+        self.program.append(Token(TokenType.OP_LOOP, None, self.path, self.line_counter))
+
+    def cmd_cr(self, cmd):
+        self.program.append(Token(TokenType.OP_CR, None, self.path, self.line_counter))

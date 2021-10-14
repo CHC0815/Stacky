@@ -9,7 +9,7 @@
         "request": "launch",
         "program": "main.py",
         "console": "integratedTerminal",
-        "args": ["sim", "test.f"],
-        "cwd": "${fileDirname}"
+        "args": ["sim", "main.f"],
+        "cwd": "/mnt/s/Programming/Stacky"
     }]
 }
