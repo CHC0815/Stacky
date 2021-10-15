@@ -68,13 +68,22 @@ def compile_program(prog: Program):
             prog.index += 1
             f.write(asm)
 
+        # exit
         f.write(f'; --- exit ---\n')
         f.write(f'    mov rax, 60\n')
         f.write(f'    mov rdi, 0\n')
         f.write(f'    syscall\n')
+
+        # string content
         f.write(f'section .data\n')
+        f.write(f';---- strings ----\n')
         for string in prog.strings:
             f.write(f'{string}\n')
+
+        # counter variables
+        f.write(f';---- counters ----\n')
+        for counter in prog.counters:
+            f.write(f'{counter} DQ 0\n')
 
     compile(filename)
 

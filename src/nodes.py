@@ -328,6 +328,7 @@ class NodeDebugDict(Node):
         return f'DebugDictNode'
 
 
+# TODO: refactor NodeCall in own classes and functions
 class NodeCall(Node):
     def __init__(self, token: Token) -> None:
         super().__init__(token)
@@ -339,11 +340,10 @@ class NodeCall(Node):
         node = prog.dict[self.name]
 
         if isinstance(node, NodeWord):
-            for i in range(len(prog.dict[self.name])):
-                prog.nodes.insert(prog.index + i + 1, prog.dict[self.name][i])
+            for i in range(len(node)):
+                prog.nodes.insert(prog.index + i + 1, node[i])
 
         elif isinstance(node, NodeLoop):
-            node = prog.dict[self.name]
             self.content = node.content
             self.body = node.body
 
@@ -378,9 +378,64 @@ class NodeCall(Node):
     def compile(self, prog: Program) -> str:
         if not self.name in prog.dict:
             raise NotDefinedError(self.token.file_name, self.token.line_number, self.name)
-        for i in range(len(prog.dict[self.name])):
-            prog.nodes.insert(prog.index + i + 1, prog.dict[self.name][i])
-        return ""
+        node = prog.dict[self.name]
+
+        if isinstance(node, NodeWord):
+            for i in range(len(node)):
+                prog.nodes.insert(prog.index + i + 1, node[i])
+            return ""
+        elif isinstance(node, NodeLoop):
+            self.content = node.content
+            self.body = node.body
+
+            counter_start = prog.get_counter_label()
+            counter_end = prog.get_counter_label()
+            prog.counters.append(counter_start)
+            prog.counters.append(counter_end)
+
+            loop_start = prog.get_label()
+            loop_body_start = prog.get_label()
+            loop_end = prog.get_label()
+            comp = f'; loop start\n'
+            comp += f'{loop_start}:\n'
+            for el in self.content:
+                comp += el.compile(prog)
+            # added content part ...
+
+            # get from to numbers
+            comp += f'    pop rax\n'  # start number
+            comp += f'    mov [{counter_start}], rax\n'  # move start number in counter_start
+            comp += f'    pop rax\n'  # end number
+            comp += f'    mov [{counter_end}], rax\n'  # move start number in counter_end
+
+            # body begin
+            comp += f'; loop body begin\n'
+            comp += f'{loop_body_start}:\n'
+            for el in self.body:
+                if isinstance(el, NodeCall):
+                    if el.name == "i":
+                        comp += f'    mov rax, [{counter_start}]\n'
+                        comp += f'    push rax\n'
+                    else:
+                        comp += el.compile(prog)
+                else:
+                    comp += el.compile(prog)
+
+            # count up
+            comp += f'    mov rax, [{counter_start}]\n'
+            comp += f'    inc rax\n'
+            comp += f'    mov  [{counter_start}], rax\n'
+
+            # check loop condition
+            comp += f'    mov rax, [{counter_start}]\n'
+            comp += f'    mov rbx, [{counter_end}]\n'
+            comp += f'    cmp rax, rbx\n'
+            comp += f'    jne {loop_body_start}\n'  # if not equal (-> less) jump back to body start
+
+            comp += f';loop end\n'
+            comp += f'{loop_end}:\n'
+            comp += f'    nop\n'
+            return comp
 
     def __str__(self) -> str:
         s = f'NodeCall:\n'
@@ -771,8 +826,7 @@ class NodeLoop(Node):
         pass
 
     def compile(self, prog: Program) -> str:
-        # TODO: implement
-        return super().compile(prog)
+        return f''
 
     def __str__(self) -> str:
         return self.__repr__()
